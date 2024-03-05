@@ -1,7 +1,9 @@
 import pygame
+
 from sys import exit
 from numpy import ndarray, nditer
 from os import system
+
 from constants import *
 
 # PYGAME SETUP
@@ -17,19 +19,19 @@ class Game:
 
         self.world = World(world_dimensions)
 
-
 class World:
 
     def __init__(self, dimensions: tuple) -> None:
-
-        self.grid = ndarray((dimensions[0], dimensions[1]), pygame.sprite.Sprite)
-        self.cells = pygame.sprite.Group()
-
+        
         self.ALIVE = 1
         self.DEAD = 0
         self.dimensions = dimensions
-
+        
+        self.grid = ndarray((self.dimensions[0], self.dimensions[1]), pygame.sprite.Sprite)
+        self.cells = pygame.sprite.Group()
+        
         self.reset_grid()
+        if SHOW_GRID: self.draw_grid()
 
     def update(self) -> None:
 
@@ -38,6 +40,7 @@ class World:
     def draw(self, surface: pygame.Surface) -> None:
 
         self.cells.draw(surface)
+        if SHOW_GRID: self.draw_grid()
 
     def reset_grid(self) -> None:
 
@@ -49,15 +52,23 @@ class World:
                 self.grid[y][x] = cell
                 self.cells.add(cell)
 
+    def draw_grid(self) -> None:
+
+        # Draws lines for the board
+        for line in range(COLS + 1): # vertical
+            pygame.draw.line(screen, GRID_COLOUR, (SQ_SIZE_X * line, 0), (SQ_SIZE_Y * line, HEIGHT), GRID_WIDTH)
+
+        for line in range(ROWS + 1): # horizontal
+            pygame.draw.line(screen, GRID_COLOUR, (0, SQ_SIZE_X * line), (WIDTH, SQ_SIZE_Y * line), GRID_WIDTH)
+
+        pygame.display.update() # Update the screen
+
     def toggle_cell(self, coords: tuple) -> None:
 
         x, y = coords
 
-        if self.grid[x][y].get_state() == self.DEAD:
-            self.grid[x][y].set_state(self.ALIVE)
-
-        elif self.grid[x][y].get_state() == self.ALIVE:
-            self.grid[x][y].set_state(self.DEAD)
+        if self.grid[y][x].get_state() == self.DEAD: self.grid[y][x].set_state(self.ALIVE)
+        elif self.grid[y][x].get_state() == self.ALIVE: self.grid[y][x].set_state(self.DEAD)
 
 class Cell(pygame.sprite.Sprite):
 
@@ -65,8 +76,8 @@ class Cell(pygame.sprite.Sprite):
 
         super().__init__()
 
-        self.image = pygame.Surface((COLS, COLS))
-        self.rect = self.image.get_rect(center = (pos[0] * COLS, pos[1] * ROWS))
+        self.image = pygame.Surface((SQ_SIZE_X, SQ_SIZE_Y))
+        self.rect = self.image.get_rect(topleft = (pos[0] * SQ_SIZE_X, pos[1] * SQ_SIZE_Y))
         self.grid_pos = pygame.math.Vector2(pos)
 
         self.state = state
@@ -77,19 +88,17 @@ class Cell(pygame.sprite.Sprite):
 
     def set_state(self, state: int) -> None:
         self.state = state
-
+        
     def get_state(self) -> int:
         return self.state
 
     def update_colour(self) -> None:
-        self.image.fill(['White', 'Black'][self.state])
+        self.image.fill([CELL_DEAD, CELL_ALIVE][self.state])
 
 def main():
 
     game = Game((COLS, ROWS))
     world = game.world
-
-    world.toggle_cell((0, 0))
 
     while True:
 
@@ -102,8 +111,8 @@ def main():
 
             if event.type == pygame.MOUSEBUTTONDOWN:
 
-                x = COLS // event.pos[0]
-                y = ROWS // event.pos[1]
+                x = int(event.pos[0] // SQ_SIZE_X)
+                y = int(event.pos[1] // SQ_SIZE_Y)
 
                 world.toggle_cell((x, y))
 
@@ -111,10 +120,7 @@ def main():
 
         world.update()
         world.draw(screen)
-
-        print(world.grid)
-
-        #system('clear')
+        
         pygame.display.update()
         clock.tick(FPS)
 

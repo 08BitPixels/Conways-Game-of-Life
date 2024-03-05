@@ -4,3 +4,11 @@ FPS = 144
 
 # World Setup
 COLS, ROWS = 10, 10
+SQ_SIZE_X, SQ_SIZE_Y = WIDTH / COLS, HEIGHT / ROWS
+SHOW_GRID = True
+GRID_WIDTH = 2
+
+# Colours
+CELL_ALIVE = '#000000'
+CELL_DEAD = '#f0f0f0'
+GRID_COLOUR = '#aaaaaa'
