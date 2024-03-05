@@ -97,7 +97,9 @@ class Cell(pygame.sprite.Sprite):
 
 def main():
 
-    game = Game((COLS, ROWS))
+    global zoom
+
+    game = Game((WORLD_X, WORLD_Y))
     world = game.world
 
     while True:
@@ -109,12 +111,16 @@ def main():
                 pygame.quit()
                 exit()
 
-            if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
 
                 x = int(event.pos[0] // SQ_SIZE_X)
                 y = int(event.pos[1] // SQ_SIZE_Y)
 
-                world.toggle_cell((x, y))
+                if x <= WORLD_X and y <= WORLD_Y: world.toggle_cell((x, y))
+
+            if event.type == pygame.MOUSEWHEEL:
+
+                zoom *= event.y * SCROLL_SPEED
 
         screen.fill('White')
 
