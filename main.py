@@ -25,6 +25,23 @@ class Game:
         
         self.world = World(world_dimensions, self)
 
+    def draw_grid(self) -> None:
+
+        # Draws lines for the board
+        for line in range(self.cols + 1): # vertical
+            pygame.draw.line(screen, GRID_COLOUR, (self.sq_size[0] * line, 0), (self.sq_size[1] * line, self.SCREEN_DIMENSIONS[1]), self.grid_width)
+
+        for line in range(self.rows + 1): # horizontal
+            pygame.draw.line(screen, GRID_COLOUR, (0, self.sq_size[0] * line), (self.SCREEN_DIMENSIONS[0], self.sq_size[1] * line), self.grid_width)
+
+    def calc_grid(self, sq_size: tuple) -> None:
+
+        self.sq_size = sq_size
+        self.cols, self.rows = self.SCREEN_DIMENSIONS[0] // self.zoom, self.SCREEN_DIMENSIONS[1] // self.zoom
+        self.grid_width = self.zoom // 20
+        
+        for cell in self.world.cells.sprites(): cell.calc_size(self.sq_size)
+
 class World:
 
     def __init__(self, world_dimensions: tuple, game: Game) -> None:
@@ -39,16 +56,16 @@ class World:
         self.cells = pygame.sprite.Group()
         
         self.reset_grid()
-        if SHOW_GRID: self.draw_grid()
 
     def update(self) -> None:
-
         self.cells.update()
 
     def draw(self, surface: pygame.Surface) -> None:
+    
+        for cell in self.cells.sprites():
 
-        self.cells.draw(surface)
-        if SHOW_GRID: self.draw_grid()
+            if cell.rect.centerx >= 0 and cell.rect.centerx <= self.game.SCREEN_DIMENSIONS[0] and cell.rect.centery >= 0 and cell.rect.centery <= self.game.SCREEN_DIMENSIONS[1]:
+                surface.blit(cell.image, cell.rect.center)
 
     def reset_grid(self) -> None:
 
@@ -59,22 +76,6 @@ class World:
                 cell = Cell(pos = (x, y), state = self.DEAD, size = self.game.sq_size, world = self)
                 self.grid[y][x] = cell
                 self.cells.add(cell)
-
-    def draw_grid(self) -> None:
-
-        # Draws lines for the board
-        for line in range(self.game.cols + 1): # vertical
-            pygame.draw.line(screen, GRID_COLOUR, (self.game.sq_size[0] * line, 0), (self.game.sq_size[1] * line, HEIGHT), self.game.grid_width)
-
-        for line in range(self.game.rows + 1): # horizontal
-            pygame.draw.line(screen, GRID_COLOUR, (0, self.game.sq_size[0] * line), (WIDTH, self.game.sq_size[1] * line), self.game.grid_width)
-
-        pygame.display.update() # Update the screen
-
-    def calc_grid(self, sq_size: tuple) -> None:
-
-        self.sq_size = sq_size
-        for cell in self.cells.sprites(): cell.calc_size(self.sq_size)
     
     def toggle_cell(self, coords: tuple) -> None:
 
@@ -98,7 +99,6 @@ class Cell(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(topleft = (self.grid_pos[0] * self.size[0], self.grid_pos[1] * self.size[1]))
 
     def update(self) -> None:
-
         self.update_colour()
 
     def set_state(self, state: int) -> None:
@@ -139,16 +139,19 @@ def main():
             if event.type == pygame.MOUSEWHEEL:
 
                 game.zoom += event.y * SCROLL_SPEED
-                game.cols, game.rows = WIDTH // game.zoom, HEIGHT // game.zoom
-                game.sq_size = (WIDTH / game.cols, HEIGHT / game.rows)
-                game.grid_width = game.zoom // 20
+                sq_size = (WIDTH / game.cols, HEIGHT / game.rows)
 
-                world.calc_grid(game.sq_size)
+                game.calc_grid(sq_size)
 
         screen.fill('White')
 
+        # World
         world.update()
         world.draw(screen)
+
+        # Game
+        if SHOW_GRID: game.draw_grid()
+        print(game.zoom)
         
         pygame.display.update()
         clock.tick(FPS)
