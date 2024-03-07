@@ -3,100 +3,92 @@ import pygame
 from sys import exit
 from numpy import ndarray, nditer
 from os import system
+from time import time
 
 from constants import *
 
 # PYGAME SETUP
 pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption('Life Viewer')
+pygame.display.set_caption('Life Viewer | INITIALISING...')
 clock = pygame.time.Clock()
 
 
 class Game:
 
-    def __init__(self, screen_dimensions: tuple, world_dimensions: tuple) -> None:
+    def __init__(self, world_dimensions: tuple, ruleset: str) -> None:
 
-        self.SCREEN_DIMENSIONS = screen_dimensions
-        self.zoom = self.SCREEN_DIMENSIONS[0] // 10
-        self.cols, self.rows = self.SCREEN_DIMENSIONS[0] // self.zoom, self.SCREEN_DIMENSIONS[1] // self.zoom
-        self.sq_size = (self.SCREEN_DIMENSIONS[0] / self.cols, self.SCREEN_DIMENSIONS[1] / self.rows)
-        self.grid_width = self.zoom // 20
+        start_time = time()
         
-        self.world = World(world_dimensions, self)
+        self.world = World(dimensions = world_dimensions, ruleset = ruleset)
+
+        if SHOW_GRID: self.draw_grid()
+
+        print(f'Life Viewer took {round(time() - start_time, 3)}s to initialise.')
 
     def draw_grid(self) -> None:
 
-        # Draws lines for the board
-        for line in range(self.cols + 1): # vertical
-            pygame.draw.line(screen, GRID_COLOUR, (self.sq_size[0] * line, 0), (self.sq_size[1] * line, self.SCREEN_DIMENSIONS[1]), self.grid_width)
-
-        for line in range(self.rows + 1): # horizontal
-            pygame.draw.line(screen, GRID_COLOUR, (0, self.sq_size[0] * line), (self.SCREEN_DIMENSIONS[0], self.sq_size[1] * line), self.grid_width)
-
-    def calc_grid(self, sq_size: tuple) -> None:
-
-        self.sq_size = sq_size
-        self.cols, self.rows = self.SCREEN_DIMENSIONS[0] // self.zoom, self.SCREEN_DIMENSIONS[1] // self.zoom
-        self.grid_width = self.zoom // 20
-        
-        for cell in self.world.cells.sprites(): cell.calc_size(self.sq_size)
+        for line in range(COLS + 1): pygame.draw.line(screen, GRID_COLOUR, (SQ_SIZE_X * line, 0), (SQ_SIZE_Y * line, HEIGHT), GRID_WIDTH)
+        for line in range(ROWS + 1): pygame.draw.line(screen, GRID_COLOUR, (0, SQ_SIZE_X * line), (WIDTH, SQ_SIZE_Y * line), GRID_WIDTH)
 
 class World:
 
-    def __init__(self, world_dimensions: tuple, game: Game) -> None:
+    def __init__(self, dimensions: tuple, ruleset: str) -> None:
         
         self.ALIVE = 1
         self.DEAD = 0
-
-        self.game = game
-        self.dimensions = world_dimensions
+        self.RULESET = {
+            'B': [*ruleset.split('/')[0].upper().strip('B')],
+            'S': [*ruleset.split('/')[1].upper().strip('S')]
+        }
+        self.DIMENSIONS = dimensions
         
-        self.grid = ndarray((self.dimensions[0], self.dimensions[1]), pygame.sprite.Sprite)
+        self.grid = ndarray((self.DIMENSIONS[0], self.DIMENSIONS[1]), pygame.sprite.Sprite)
         self.cells = pygame.sprite.Group()
         
         self.reset_grid()
 
     def update(self) -> None:
+        
         self.cells.update()
+        self.update_generation()
+
+    def update_generation(self) -> None:
+
+        pass
 
     def draw(self, surface: pygame.Surface) -> None:
-    
-        for cell in self.cells.sprites():
-
-            if cell.rect.centerx >= 0 and cell.rect.centerx <= self.game.SCREEN_DIMENSIONS[0] and cell.rect.centery >= 0 and cell.rect.centery <= self.game.SCREEN_DIMENSIONS[1]:
-                surface.blit(cell.image, cell.rect.center)
+        self.cells.draw(surface)
 
     def reset_grid(self) -> None:
 
-        for x in range(self.dimensions[0]):
+        for x in range(self.DIMENSIONS[0]):
 
-            for y in range(self.dimensions[1]):
+            for y in range(self.DIMENSIONS[1]):
 
-                cell = Cell(pos = (x, y), state = self.DEAD, size = self.game.sq_size, world = self)
+                cell = Cell(pos = (x, y), state = self.DEAD)
                 self.grid[y][x] = cell
                 self.cells.add(cell)
-    
+
     def toggle_cell(self, coords: tuple) -> None:
 
         x, y = coords
-
-        if self.grid[y][x].get_state() == self.DEAD: self.grid[y][x].set_state(self.ALIVE)
-        elif self.grid[y][x].get_state() == self.ALIVE: self.grid[y][x].set_state(self.DEAD)
+        cell_state = self.grid[y][x].get_state()
+        
+        cell_state = (cell_state + 1) % 2
+        self.grid[y][x].set_state(cell_state)
 
 class Cell(pygame.sprite.Sprite):
 
-    def __init__(self, pos: tuple, size: tuple, state: int, world: World) -> None:
+    def __init__(self, pos: tuple, state: int) -> None:
 
         super().__init__()
 
-        self.world = world
-        self.state = state
-        self.size = size
+        self.image = pygame.Surface((SQ_SIZE_X, SQ_SIZE_Y))
+        self.rect = self.image.get_rect(topleft = (pos[0] * SQ_SIZE_X, pos[1] * SQ_SIZE_Y))
         self.grid_pos = pygame.math.Vector2(pos)
 
-        self.image = pygame.Surface(self.size)
-        self.rect = self.image.get_rect(topleft = (self.grid_pos[0] * self.size[0], self.grid_pos[1] * self.size[1]))
+        self.state = state
 
     def update(self) -> None:
         self.update_colour()
@@ -110,14 +102,9 @@ class Cell(pygame.sprite.Sprite):
     def update_colour(self) -> None:
         self.image.fill([CELL_DEAD, CELL_ALIVE][self.state])
 
-    def calc_size(self, size: tuple) -> None:
-
-        self.image = pygame.transform.scale(self.image, size)
-        self.rect = self.image.get_rect(topleft = (self.grid_pos[0] * self.world.game.sq_size[0], self.grid_pos[1] * self.world.game.sq_size[0]))
-
 def main():
 
-    game = Game(screen_dimensions = (WIDTH, HEIGHT), world_dimensions = (WORLD_X, WORLD_Y))
+    game = Game((COLS, ROWS), RULESET)
     world = game.world
 
     while True:
@@ -129,30 +116,21 @@ def main():
                 pygame.quit()
                 exit()
 
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if event.type == pygame.MOUSEBUTTONDOWN:
 
-                x = int(event.pos[0] // game.sq_size[0])
-                y = int(event.pos[1] // game.sq_size[1])
+                x = int(event.pos[0] // SQ_SIZE_X)
+                y = int(event.pos[1] // SQ_SIZE_Y)
 
-                if x <= WORLD_X and y <= WORLD_Y: world.toggle_cell((x, y))
-
-            if event.type == pygame.MOUSEWHEEL:
-
-                game.zoom += event.y * SCROLL_SPEED
-                sq_size = (WIDTH / game.cols, HEIGHT / game.rows)
-
-                game.calc_grid(sq_size)
+                if x <= COLS and y <= ROWS: world.toggle_cell((x, y))
 
         screen.fill('White')
 
-        # World
         world.update()
         world.draw(screen)
 
-        # Game
         if SHOW_GRID: game.draw_grid()
-        print(game.zoom)
-        
+
+        pygame.display.set_caption(f'Life Viewer | FPS: {round(clock.get_fps(), 2)}')
         pygame.display.update()
         clock.tick(FPS)
 
