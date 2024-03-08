@@ -19,6 +19,11 @@ class Game:
     def __init__(self, world_dimensions: tuple, ruleset: str) -> None:
 
         start_time = time()
+
+        self.generating = False
+        self.generation_index = 0
+        self.generation_speed = 5
+        self.generation_buffer = 0
         
         self.world = World(dimensions = world_dimensions, ruleset = ruleset)
 
@@ -31,6 +36,17 @@ class Game:
         for line in range(COLS + 1): pygame.draw.line(screen, GRID_COLOUR, (SQ_SIZE_X * line, 0), (SQ_SIZE_Y * line, HEIGHT), GRID_WIDTH)
         for line in range(ROWS + 1): pygame.draw.line(screen, GRID_COLOUR, (0, SQ_SIZE_X * line), (WIDTH, SQ_SIZE_Y * line), GRID_WIDTH)
 
+    def update_generation(self, dt: float | int) -> None:
+
+        if self.generation_buffer < 0: self.generation_buffer = self.generation_speed
+        elif self.generation_buffer == 0: self.world.update_generation()
+
+        self.generation_buffer -= round(100 * dt)
+
+    def reset_to_last(self) -> None:
+
+        pass
+
 class World:
 
     def __init__(self, dimensions: tuple, ruleset: str) -> None:
@@ -42,8 +58,10 @@ class World:
             'S': [*ruleset.split('/')[1].upper().strip('S')]
         }
         self.DIMENSIONS = dimensions
-        
+
+        self.generation_index = 0
         self.grid = ndarray((self.DIMENSIONS[0], self.DIMENSIONS[1]), pygame.sprite.Sprite)
+        self.previous_start_generation = self.grid
         self.cells = pygame.sprite.Group()
         
         self.reset_grid()
@@ -51,11 +69,49 @@ class World:
     def update(self) -> None:
         
         self.cells.update()
-        self.update_generation()
 
     def update_generation(self) -> None:
 
-        pass
+        current_grid = self.grid
+        neighbours = (
+            
+            (-1, -1),  # Above left
+            (-1, 0),  # Above
+            (-1, 1),  # Above right
+            (0, -1),  # Left
+            (0, 1),  # Right
+            (1, -1),  # Below left
+            (1, 0),  # Below
+            (1, 1),  # Below right
+            
+        )
+
+        for x in range(self.DIMENSIONS[0]):
+
+            for y in range(self.DIMENSIONS[1]):
+
+                cell = current_grid[y][x]
+                
+                if cell.get_state() == self.DEAD:
+
+                    live_neighbours = []
+
+                    for neighbour in neighbours:
+
+                        try:
+                            
+                            neighbour = self.grid[y + neighbour[1]][x + neighbour[0]]
+                            if neighbour.get_state() == self.ALIVE: live_neighbours.append(0)
+
+                        except IndexError: continue
+
+                    print(live_neighbours)
+                    
+                    if len(live_neighbours) in self.RULESET['B']: cell.set_state(self.ALIVE)       
+
+        self.grid = current_grid
+        self.generation_index += 1
+        print(self.generation_index)
 
     def draw(self, surface: pygame.Surface) -> None:
         self.cells.draw(surface)
@@ -107,7 +163,11 @@ def main():
     game = Game((COLS, ROWS), RULESET)
     world = game.world
 
+    previous_time = time()
     while True:
+
+        dt = time() - previous_time
+        previous_time = time()
 
         for event in pygame.event.get():
 
@@ -123,9 +183,26 @@ def main():
 
                 if x <= COLS and y <= ROWS: world.toggle_cell((x, y))
 
+            if event.type == pygame.KEYDOWN:
+            
+                if event.key == pygame.K_SPACE:
+
+                    if game.generating == False: 
+    
+                        world.previous_start_generation = world.grid
+                        game.generating = True
+                        
+                    elif game.generating == True: game.generating = False
+
+                if event.key == pygame.K_r:
+
+                    world.grid = world.previous_start_generation
+                    print('Reset to last start generation')
+
         screen.fill('White')
 
         world.update()
+        if game.generating: game.update_generation(dt)
         world.draw(screen)
 
         if SHOW_GRID: game.draw_grid()
