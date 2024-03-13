@@ -45,8 +45,9 @@ class Game:
 
     def reset_to_last(self) -> None:
 
-        pass
-
+        self.world.grid = self.world.previous_start_generation
+        print('Reset to last start generation')
+    
 class World:
 
     def __init__(self, dimensions: tuple, ruleset: str) -> None:
@@ -90,7 +91,7 @@ class World:
 
             for y in range(self.DIMENSIONS[1]):
 
-                cell = current_grid[y][x]
+                current_cell = current_grid[y][x]
 
                 live_neighbours = []
 
@@ -98,16 +99,19 @@ class World:
 
                     try:
                         
-                        neighbour = self.grid[y + neighbour[1]][x + neighbour[0]]
+                        neighbour = current_grid[y + neighbour[1]][x + neighbour[0]]
                         if neighbour.get_state() == self.ALIVE: live_neighbours.append(0)
 
                     except IndexError: continue
+
+                state = current_cell.get_state()
                 
-                if str(len(live_neighbours)) in self.RULESET['S']: cell.set_state(self.ALIVE)
-                elif str(len(live_neighbours)) in self.RULESET['B']: cell.set_state(self.ALIVE)
-                else: cell.set_state(self.DEAD)
-        
-        self.grid = current_grid
+                if state == self.DEAD:
+                    if str(len(live_neighbours)) in self.RULESET['B']: self.grid[y][x].set_state(self.ALIVE)
+                        
+                elif state == self.ALIVE:
+                    if str(len(live_neighbours)) not in self.RULESET['S']: self.grid[y][x].set_state(self.DEAD)
+
         self.generation_index += 1
         print(self.generation_index)
 
@@ -193,9 +197,10 @@ def main():
                     elif game.generating == True: game.generating = False
 
                 if event.key == pygame.K_r:
+                    game.reset_to_last()
 
-                    world.grid = world.previous_start_generation
-                    print('Reset to last start generation')
+                if event.key == pygame.K_w and not game.generating:
+                    world.update_generation()
 
         screen.fill('White')
 
