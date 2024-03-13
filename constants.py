@@ -1,10 +1,14 @@
-# Screen Setup
-WIDTH, HEIGHT = 600, 600
-FPS = 144
-
 # World Setup
+
+FPS = 144
 COLS, ROWS = 8, 8
+
+# Screen Setup
+SCALE = 80
+WIDTH, HEIGHT = COLS * SCALE, ROWS * SCALE
+
 SQ_SIZE_X, SQ_SIZE_Y = WIDTH / COLS, HEIGHT / ROWS
+
 SHOW_GRID = True
 GRID_WIDTH = 20 // COLS
 RULESET = 'B3/S23'

@@ -19,10 +19,10 @@ class Game:
     def __init__(self, world_dimensions: tuple, ruleset: str) -> None:
 
         start_time = time()
-
+        
         self.generating = False
         self.generation_index = 0
-        self.generation_speed = 5
+        self.generation_speed = 2
         self.generation_buffer = 0
         
         self.world = World(dimensions = world_dimensions, ruleset = ruleset)
@@ -91,24 +91,22 @@ class World:
             for y in range(self.DIMENSIONS[1]):
 
                 cell = current_grid[y][x]
+
+                live_neighbours = []
+
+                for neighbour in neighbours:
+
+                    try:
+                        
+                        neighbour = self.grid[y + neighbour[1]][x + neighbour[0]]
+                        if neighbour.get_state() == self.ALIVE: live_neighbours.append(0)
+
+                    except IndexError: continue
                 
-                if cell.get_state() == self.DEAD:
-
-                    live_neighbours = []
-
-                    for neighbour in neighbours:
-
-                        try:
-                            
-                            neighbour = self.grid[y + neighbour[1]][x + neighbour[0]]
-                            if neighbour.get_state() == self.ALIVE: live_neighbours.append(0)
-
-                        except IndexError: continue
-
-                    print(live_neighbours)
-                    
-                    if len(live_neighbours) in self.RULESET['B']: cell.set_state(self.ALIVE)       
-
+                if str(len(live_neighbours)) in self.RULESET['S']: cell.set_state(self.ALIVE)
+                elif str(len(live_neighbours)) in self.RULESET['B']: cell.set_state(self.ALIVE)
+                else: cell.set_state(self.DEAD)
+        
         self.grid = current_grid
         self.generation_index += 1
         print(self.generation_index)
