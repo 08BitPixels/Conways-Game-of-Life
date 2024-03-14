@@ -1,8 +1,7 @@
 import pygame
 
 from sys import exit
-from numpy import ndarray, nditer
-from os import system
+from numpy import ndarray
 from time import time
 
 from constants import *
@@ -55,8 +54,8 @@ class World:
         self.ALIVE = 1
         self.DEAD = 0
         self.RULESET = {
-            'B': [*ruleset.split('/')[0].upper().strip('B')],
-            'S': [*ruleset.split('/')[1].upper().strip('S')]
+            'B': [int(i) for i in ruleset.split('/')[0].upper().strip('B')],
+            'S': [int(i) for i in ruleset.split('/')[1].upper().strip('S')]
         }
         self.DIMENSIONS = dimensions
 
@@ -73,7 +72,7 @@ class World:
 
     def update_generation(self) -> None:
 
-        current_grid = self.grid
+        prev_grid = self.grid
         neighbours = (
             
             (-1, -1),  # Above left
@@ -91,26 +90,28 @@ class World:
 
             for y in range(self.DIMENSIONS[1]):
 
-                current_cell = current_grid[y][x]
-
-                live_neighbours = []
+                live_neighbours = 0 
 
                 for neighbour in neighbours:
 
                     try:
                         
-                        neighbour = current_grid[y + neighbour[1]][x + neighbour[0]]
-                        if neighbour.get_state() == self.ALIVE: live_neighbours.append(0)
+                        neighbour = prev_grid[y + neighbour[1]][x + neighbour[0]]
+                        if neighbour.get_state() == self.ALIVE: live_neighbours += 1
 
                     except IndexError: continue
-
-                state = current_cell.get_state()
                 
-                if state == self.DEAD:
-                    if str(len(live_neighbours)) in self.RULESET['B']: self.grid[y][x].set_state(self.ALIVE)
-                        
-                elif state == self.ALIVE:
-                    if str(len(live_neighbours)) not in self.RULESET['S']: self.grid[y][x].set_state(self.DEAD)
+                state = prev_grid[y][x].get_state()
+                print(live_neighbours)
+
+                if state == self.ALIVE:
+
+                    if live_neighbours == 3 or live_neighbours == 2: self.grid[y][x].set_state(self.ALIVE)
+                    if live_neighbours > 3 or live_neighbours < 2: self.grid[y][x].set_state(self.DEAD)
+                    
+                elif state == self.DEAD:
+                    
+                    if live_neighbours == 3: self.grid[y][x].set_state(self.ALIVE)
 
         self.generation_index += 1
         print(self.generation_index)
