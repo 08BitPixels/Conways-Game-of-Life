@@ -3,6 +3,7 @@ import pygame
 from sys import exit
 from numpy import ndarray
 from time import time
+from copy import deepcopy
 
 from constants import *
 
@@ -11,7 +12,6 @@ pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption('Life Viewer | INITIALISING...')
 clock = pygame.time.Clock()
-
 
 class Game:
 
@@ -72,40 +72,61 @@ class World:
 
     def update_generation(self) -> None:
 
-        prev_grid = self.grid
+        prev_grid = ndarray((self.DIMENSIONS[0], self.DIMENSIONS[1]), int)
+        
+        for y in range(self.DIMENSIONS[1]):
 
-        for x in range(self.DIMENSIONS[0]):
+            for x in range(self.DIMENSIONS[0]):
 
-            for y in range(self.DIMENSIONS[1]):
+                prev_grid[y][x] = self.grid[y][x].get_state()
 
-                live_neighbours = 0
+        for y in range(self.DIMENSIONS[1]):
 
-                for nx in range(-1, 2, 1):
-                    
-                    for ny in range(-1, 2, 1):
+            for x in range(self.DIMENSIONS[0]):
 
-                        if nx == 0 and ny == 0: continue
+                cell = self.grid[y][x]
+
+                if cell.get_state() == self.ALIVE:
+
+                    live_neighbours = 0
     
-                        try:
-                            
-                            neighbour = prev_grid[y + ny][x + nx]
-                            if neighbour.get_state() == self.ALIVE: live_neighbours += 1
+                    for nx in range(-1, 2, 1):
+                        
+                        for ny in range(-1, 2, 1):
     
-                        except IndexError: continue
+                            if nx == 0 and ny == 0: continue
+        
+                            try:
+                                
+                                neighbour = self.grid[y + ny][x + nx]
+                                if neighbour.get_state() == self.ALIVE: live_neighbours += 1
+        
+                            except IndexError: continue
+    
+                    if live_neighbours < 2 or live_neighbours > 3: prev_grid[y][x] = self.DEAD
+                    elif live_neighbours == 2 or live_neighbours == 3: prev_grid[y][x] = self.ALIVE
+
+        for y in range(self.DIMENSIONS[1]):
+
+            for x in range(self.DIMENSIONS[0]):
+
+                print(prev_grid[y][x], end = '')
+
+        print()
+        for y in range(self.DIMENSIONS[1]):
+
+            for x in range(self.DIMENSIONS[0]):
+
+                print(self.grid[y][x].get_state(), end = '')
+
+        for y in range(self.DIMENSIONS[1]):
+
+            for x in range(self.DIMENSIONS[0]):
+
+                self.grid[y][x].set_state(prev_grid[y][x])
                 
-                state = prev_grid[y][x].get_state()
-
-                if state == self.ALIVE:
-
-                    if live_neighbours == 3 or live_neighbours == 2: self.grid[y][x].set_state(self.ALIVE)
-                    else: self.grid[y][x].set_state(self.DEAD)
-                    
-                elif state == self.DEAD:
-                    
-                    if live_neighbours == 3: self.grid[y][x].set_state(self.ALIVE)
-
         self.generation_index += 1
-        #print(self.generation_index)
+        print(f"Gen Index = {self.generation_index}")
 
     def draw(self, surface: pygame.Surface) -> None:
         self.cells.draw(surface)
@@ -181,12 +202,12 @@ def main():
             
                 if event.key == pygame.K_SPACE:
 
-                    if game.generating == False: 
+                    if not game.generating: 
     
                         world.previous_start_generation = world.grid
                         game.generating = True
                         
-                    elif game.generating == True: game.generating = False
+                    elif game.generating: game.generating = False
 
                 if event.key == pygame.K_r:
                     game.reset_to_last()
@@ -205,6 +226,5 @@ def main():
         pygame.display.set_caption(f'Life Viewer | FPS: {round(clock.get_fps(), 2)}')
         pygame.display.update()
         clock.tick(FPS)
-
 
 main()
