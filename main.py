@@ -73,48 +73,39 @@ class World:
     def update_generation(self) -> None:
 
         prev_grid = self.grid
-        neighbours = (
-            
-            (-1, -1),  # Above left
-            (-1, 0),  # Above
-            (-1, 1),  # Above right
-            (0, -1),  # Left
-            (0, 1),  # Right
-            (1, -1),  # Below left
-            (1, 0),  # Below
-            (1, 1),  # Below right
-            
-        )
 
         for x in range(self.DIMENSIONS[0]):
 
             for y in range(self.DIMENSIONS[1]):
 
-                live_neighbours = 0 
+                live_neighbours = 0
 
-                for neighbour in neighbours:
+                for nx in range(-1, 2, 1):
+                    
+                    for ny in range(-1, 2, 1):
 
-                    try:
-                        
-                        neighbour = prev_grid[y + neighbour[1]][x + neighbour[0]]
-                        if neighbour.get_state() == self.ALIVE: live_neighbours += 1
-
-                    except IndexError: continue
+                        if nx == 0 and ny == 0: continue
+    
+                        try:
+                            
+                            neighbour = prev_grid[y + ny][x + nx]
+                            if neighbour.get_state() == self.ALIVE: live_neighbours += 1
+    
+                        except IndexError: continue
                 
                 state = prev_grid[y][x].get_state()
-                print(live_neighbours)
 
                 if state == self.ALIVE:
 
                     if live_neighbours == 3 or live_neighbours == 2: self.grid[y][x].set_state(self.ALIVE)
-                    if live_neighbours > 3 or live_neighbours < 2: self.grid[y][x].set_state(self.DEAD)
+                    else: self.grid[y][x].set_state(self.DEAD)
                     
                 elif state == self.DEAD:
                     
                     if live_neighbours == 3: self.grid[y][x].set_state(self.ALIVE)
 
         self.generation_index += 1
-        print(self.generation_index)
+        #print(self.generation_index)
 
     def draw(self, surface: pygame.Surface) -> None:
         self.cells.draw(surface)
