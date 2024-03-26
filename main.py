@@ -19,8 +19,8 @@ class Game:
         start_time = time()
         
         self.generating = False
-        self.generation_index = 0
-        self.generation_speed = 2
+        self.gen_index = 0
+        self.generation_speed = 1
         self.generation_buffer = 0
         
         self.world = World(dimensions = world_dimensions, ruleset = ruleset)
@@ -36,16 +36,13 @@ class Game:
 
     def update_generation(self, dt: float | int) -> None:
 
-        if self.generation_buffer < 0: self.generation_buffer = self.generation_speed
-        elif self.generation_buffer == 0: self.world.update_generation()
+        if self.generation_buffer >= 0: 
+            
+            self.world.update_generation()
+            self.generation_buffer = self.generation_speed
 
-        self.generation_buffer -= round(100 * dt)
-
-    def reset_to_last(self) -> None:
-
-        self.world.grid = self.world.previous_start_generation
-        print('Reset to last start generation')
-    
+        self.generation_buffer -= 1
+        
 class World:
 
     def __init__(self, dimensions: tuple, ruleset: str) -> None:
@@ -58,12 +55,14 @@ class World:
         }
         self.DIMENSIONS = dimensions
 
-        self.generation_index = 0
+        self.gen_index = 0
         self.grid = ndarray((self.DIMENSIONS[0], self.DIMENSIONS[1]), pygame.sprite.Sprite)
-        self.previous_start_generation = self.grid
+        self.prev_grids = []
+                
         self.cells = pygame.sprite.Group()
-        
+
         self.reset_grid()
+        self.save_grid()
 
     def update(self) -> None:
         
@@ -71,40 +70,17 @@ class World:
 
     def update_generation(self) -> None:
 
-        prev_grid = self.grid.copy()
+        new_grid = ndarray((self.DIMENSIONS[0], self.DIMENSIONS[1]), int)
+        
+        for x in range(self.DIMENSIONS[0]):
+            
+            for y in range(self.DIMENSIONS[1]):
+                
+                new_grid[y][x] = self.grid[y][x].get_state()
 
-        for y in range(self.DIMENSIONS[1]):
+        for x in range(self.DIMENSIONS[0]):
 
-            for x in range(self.DIMENSIONS[0]):
-
-                print(prev_grid[y][x].get_state(), end = '')
-
-        print()
-        for y in range(self.DIMENSIONS[1]):
-
-            for x in range(self.DIMENSIONS[0]):
-
-                print(self.grid[y][x].get_state(), end = '')
-
-        prev_grid[0][0].set_state(self.ALIVE)
-
-        print()
-        for y in range(self.DIMENSIONS[1]):
-
-            for x in range(self.DIMENSIONS[0]):
-
-                print(prev_grid[y][x].get_state(), end = '')
-
-        print()
-        for y in range(self.DIMENSIONS[1]):
-
-            for x in range(self.DIMENSIONS[0]):
-
-                print(self.grid[y][x].get_state(), end = '')
-
-        for y in range(self.DIMENSIONS[1]):
-
-            for x in range(self.DIMENSIONS[0]):
+            for y in range(self.DIMENSIONS[1]):
 
                 live_neighbours = 0
 
@@ -116,32 +92,25 @@ class World:
     
                         try:
                             
-                            neighbour = prev_grid[y + ny][x + nx]
+                            neighbour = self.grid[y + ny][x + nx]
                             if neighbour.get_state() == self.ALIVE: live_neighbours += 1
     
                         except IndexError: continue
 
-                state = prev_grid[y][x].get_state()
-                if state == self.ALIVE: print(live_neighbours)
-                if state == self.ALIVE and live_neighbours not in self.RULESET['S']: self.grid[y][x].set_state(self.DEAD)
-                if state == self.DEAD and live_neighbours in self.RULESET['B']: self.grid[y][x].set_state(self.ALIVE)
+                state = self.grid[y][x].get_state()
 
-        print()
-        for y in range(self.DIMENSIONS[1]):
+                if state == self.ALIVE and live_neighbours not in self.RULESET['S']: new_grid[y][x] = self.DEAD
+                if state == self.DEAD and live_neighbours in self.RULESET['B']: new_grid[y][x] = self.ALIVE
+                    
+        for x in range(self.DIMENSIONS[0]):
 
-            for x in range(self.DIMENSIONS[0]):
+            for y in range(self.DIMENSIONS[1]):
 
-                print(prev_grid[y][x].get_state(), end = '')
-
-        print()
-        for y in range(self.DIMENSIONS[1]):
-
-            for x in range(self.DIMENSIONS[0]):
-
-                print(self.grid[y][x].get_state(), end = '')
+                self.grid[y][x].set_state(new_grid[y][x])
                 
-        self.generation_index += 1
-        print(f"Gen Index = {self.generation_index}")
+        self.gen_index += 1
+        self.save_grid()
+        print(f"Gen Index = {self.gen_index}")
 
     def draw(self, surface: pygame.Surface) -> None:
         self.cells.draw(surface)
@@ -151,10 +120,22 @@ class World:
         for x in range(self.DIMENSIONS[0]):
 
             for y in range(self.DIMENSIONS[1]):
-
+                
                 cell = Cell(pos = (x, y), state = self.DEAD)
                 self.grid[y][x] = cell
                 self.cells.add(cell)
+                
+    def save_grid(self) -> None:
+        
+        prev_grid = ndarray((self.DIMENSIONS[0], self.DIMENSIONS[1]), int)
+        
+        for x in range(self.DIMENSIONS[0]):
+
+            for y in range(self.DIMENSIONS[1]):
+
+                prev_grid[y][x] = self.grid[y][x].get_state()
+
+        self.prev_grids.append(prev_grid)
 
     def toggle_cell(self, coords: tuple) -> None:
 
@@ -163,6 +144,14 @@ class World:
         
         cell_state = (cell_state + 1) % 2
         self.grid[y][x].set_state(cell_state)
+
+    def reset_to(self, index: int) -> None:
+
+        for x in range(self.DIMENSIONS[0]):
+            
+            for y in range(self.DIMENSIONS[1]):
+                
+                self.grid[y][x].set_state(self.prev_grids[index - 1][y][x])
 
 class Cell(pygame.sprite.Sprite):
 
@@ -218,17 +207,20 @@ def main():
                 if event.key == pygame.K_SPACE:
 
                     if not game.generating: 
-    
-                        world.previous_start_generation = world.grid
+
+                        world.save_grid()
                         game.generating = True
                         
                     elif game.generating: game.generating = False
 
-                if event.key == pygame.K_r:
-                    game.reset_to_last()
-
                 if event.key == pygame.K_w and not game.generating:
                     world.update_generation()
+
+                if event.key == pygame.K_s and not game.generating:
+
+                    world.gen_index -= 1
+                    world.reset_to(world.gen_index)
+                    print(f"Gen Index = {world.gen_index}")
 
         screen.fill('White')
 
