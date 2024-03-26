@@ -3,7 +3,6 @@ import pygame
 from sys import exit
 from numpy import ndarray
 from time import time
-from copy import deepcopy
 
 from constants import *
 
@@ -28,7 +27,7 @@ class Game:
 
         if SHOW_GRID: self.draw_grid()
 
-        print(f'Life Viewer took {round(time() - start_time, 3)}s to initialise.')
+        print(f'Life Viewer initialised {round(time() - start_time, 3)}s.')
 
     def draw_grid(self) -> None:
 
@@ -72,45 +71,29 @@ class World:
 
     def update_generation(self) -> None:
 
-        prev_grid = ndarray((self.DIMENSIONS[0], self.DIMENSIONS[1]), int)
-        
-        for y in range(self.DIMENSIONS[1]):
-
-            for x in range(self.DIMENSIONS[0]):
-
-                prev_grid[y][x] = self.grid[y][x].get_state()
+        prev_grid = self.grid.copy()
 
         for y in range(self.DIMENSIONS[1]):
 
             for x in range(self.DIMENSIONS[0]):
 
-                cell = self.grid[y][x]
+                print(prev_grid[y][x].get_state(), end = '')
 
-                if cell.get_state() == self.ALIVE:
-
-                    live_neighbours = 0
-    
-                    for nx in range(-1, 2, 1):
-                        
-                        for ny in range(-1, 2, 1):
-    
-                            if nx == 0 and ny == 0: continue
-        
-                            try:
-                                
-                                neighbour = self.grid[y + ny][x + nx]
-                                if neighbour.get_state() == self.ALIVE: live_neighbours += 1
-        
-                            except IndexError: continue
-    
-                    if live_neighbours < 2 or live_neighbours > 3: prev_grid[y][x] = self.DEAD
-                    elif live_neighbours == 2 or live_neighbours == 3: prev_grid[y][x] = self.ALIVE
-
+        print()
         for y in range(self.DIMENSIONS[1]):
 
             for x in range(self.DIMENSIONS[0]):
 
-                print(prev_grid[y][x], end = '')
+                print(self.grid[y][x].get_state(), end = '')
+
+        prev_grid[0][0].set_state(self.ALIVE)
+
+        print()
+        for y in range(self.DIMENSIONS[1]):
+
+            for x in range(self.DIMENSIONS[0]):
+
+                print(prev_grid[y][x].get_state(), end = '')
 
         print()
         for y in range(self.DIMENSIONS[1]):
@@ -123,7 +106,39 @@ class World:
 
             for x in range(self.DIMENSIONS[0]):
 
-                self.grid[y][x].set_state(prev_grid[y][x])
+                live_neighbours = 0
+
+                for nx in range(-1, 2, 1):
+                    
+                    for ny in range(-1, 2, 1):
+
+                        if nx == 0 and ny == 0: continue
+    
+                        try:
+                            
+                            neighbour = prev_grid[y + ny][x + nx]
+                            if neighbour.get_state() == self.ALIVE: live_neighbours += 1
+    
+                        except IndexError: continue
+
+                state = prev_grid[y][x].get_state()
+                if state == self.ALIVE: print(live_neighbours)
+                if state == self.ALIVE and live_neighbours not in self.RULESET['S']: self.grid[y][x].set_state(self.DEAD)
+                if state == self.DEAD and live_neighbours in self.RULESET['B']: self.grid[y][x].set_state(self.ALIVE)
+
+        print()
+        for y in range(self.DIMENSIONS[1]):
+
+            for x in range(self.DIMENSIONS[0]):
+
+                print(prev_grid[y][x].get_state(), end = '')
+
+        print()
+        for y in range(self.DIMENSIONS[1]):
+
+            for x in range(self.DIMENSIONS[0]):
+
+                print(self.grid[y][x].get_state(), end = '')
                 
         self.generation_index += 1
         print(f"Gen Index = {self.generation_index}")
