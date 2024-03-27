@@ -20,7 +20,7 @@ class Game:
         
         self.generating = False
         self.gen_index = 0
-        self.generation_speed = 1
+        self.generation_speed = 2
         self.generation_buffer = 0
         
         self.world = World(dimensions = world_dimensions, ruleset = ruleset)
@@ -36,12 +36,12 @@ class Game:
 
     def update_generation(self, dt: float | int) -> None:
 
-        if self.generation_buffer >= 0: 
+        if self.generation_buffer <= 0: 
             
             self.world.update_generation()
             self.generation_buffer = self.generation_speed
 
-        self.generation_buffer -= 1
+        self.generation_buffer -= round(100 * dt)
         
 class World:
 
@@ -62,7 +62,7 @@ class World:
         self.cells = pygame.sprite.Group()
 
         self.reset_grid()
-        self.save_grid()
+        #self.save_grid()
 
     def update(self) -> None:
         
@@ -147,11 +147,13 @@ class World:
 
     def reset_to(self, index: int) -> None:
 
-        for x in range(self.DIMENSIONS[0]):
+        if self.prev_grids:
             
-            for y in range(self.DIMENSIONS[1]):
+            for x in range(self.DIMENSIONS[0]):
                 
-                self.grid[y][x].set_state(self.prev_grids[index - 1][y][x])
+                for y in range(self.DIMENSIONS[1]):
+                    
+                    self.grid[y][x].set_state(self.prev_grids[index][y][x])
 
 class Cell(pygame.sprite.Sprite):
 
@@ -212,6 +214,11 @@ def main():
                         game.generating = True
                         
                     elif game.generating: game.generating = False
+
+                if event.key == pygame.K_r and not game.generating:
+
+                    world.gen_index = 0
+                    world.reset_to(world.gen_index)
 
                 if event.key == pygame.K_w and not game.generating:
                     world.update_generation()
