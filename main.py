@@ -155,6 +155,8 @@ class World:
                     
                     self.grid[y][x].set_state(self.prev_grids[index][y][x])
 
+        self.prev_grids.pop(index)
+
 class Cell(pygame.sprite.Sprite):
 
     def __init__(self, pos: tuple, state: int) -> None:
@@ -223,7 +225,7 @@ def main():
                 if event.key == pygame.K_w and not game.generating:
                     world.update_generation()
 
-                if event.key == pygame.K_s and not game.generating:
+                if event.key == pygame.K_s and not game.generating and world.gen_index > 0:
 
                     world.gen_index -= 1
                     world.reset_to(world.gen_index)
