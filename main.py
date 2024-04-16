@@ -19,15 +19,14 @@ class Game:
         start_time = time()
         
         self.generating = False
-        self.gen_index = 0
-        self.generation_speed = 2
+        self.generation_speed = 1
         self.generation_buffer = 0
+        self.show_grid = True
         
         self.world = World(dimensions = world_dimensions, ruleset = ruleset)
 
-        if SHOW_GRID: self.draw_grid()
-
         print(f'Life Viewer initialised {round(time() - start_time, 3)}s.')
+        print(f'Gen Index = {self.world.gen_index}')
 
     def draw_grid(self) -> None:
 
@@ -36,7 +35,7 @@ class Game:
 
     def update_generation(self, dt: float | int) -> None:
 
-        if self.generation_buffer <= 0: 
+        if self.generation_buffer <= 0:
             
             self.world.update_generation()
             self.generation_buffer = self.generation_speed
@@ -62,14 +61,10 @@ class World:
         self.cells = pygame.sprite.Group()
 
         self.reset_grid()
-        #self.save_grid()
-
-    def update(self) -> None:
-        
-        self.cells.update()
 
     def update_generation(self) -> None:
 
+        self.save_grid()
         new_grid = ndarray((self.DIMENSIONS[0], self.DIMENSIONS[1]), int)
         
         for x in range(self.DIMENSIONS[0]):
@@ -106,14 +101,15 @@ class World:
 
             for y in range(self.DIMENSIONS[1]):
 
-                self.grid[y][x].set_state(new_grid[y][x])
+                cell = self.grid[y][x]
+                if new_grid[y][x] != cell.get_state(): 
+
+                    cell.set_state(new_grid[y][x])
+                    cell.update()
+                    screen.blit(cell.image, cell.rect)
                 
         self.gen_index += 1
-        self.save_grid()
         print(f"Gen Index = {self.gen_index}")
-
-    def draw(self, surface: pygame.Surface) -> None:
-        self.cells.draw(surface)
 
     def reset_grid(self) -> None:
 
@@ -124,6 +120,7 @@ class World:
                 cell = Cell(pos = (x, y), state = self.DEAD)
                 self.grid[y][x] = cell
                 self.cells.add(cell)
+                cell.update()
                 
     def save_grid(self) -> None:
         
@@ -134,16 +131,19 @@ class World:
             for y in range(self.DIMENSIONS[1]):
 
                 prev_grid[y][x] = self.grid[y][x].get_state()
-
+        
         self.prev_grids.append(prev_grid)
 
     def toggle_cell(self, coords: tuple) -> None:
 
         x, y = coords
-        cell_state = self.grid[y][x].get_state()
+        cell = self.grid[y][x]
+        cell_state = cell.get_state()
         
         cell_state = (cell_state + 1) % 2
-        self.grid[y][x].set_state(cell_state)
+        cell.set_state(cell_state)
+        cell.update()
+        screen.blit(cell.image, cell.rect)
 
     def reset_to(self, index: int) -> None:
 
@@ -156,6 +156,7 @@ class World:
                     self.grid[y][x].set_state(self.prev_grids[index][y][x])
 
         self.prev_grids.pop(index)
+        print(f"Gen Index = {self.gen_index}")
 
 class Cell(pygame.sprite.Sprite):
 
@@ -210,11 +211,7 @@ def main():
             
                 if event.key == pygame.K_SPACE:
 
-                    if not game.generating: 
-
-                        world.save_grid()
-                        game.generating = True
-                        
+                    if not game.generating: game.generating = True
                     elif game.generating: game.generating = False
 
                 if event.key == pygame.K_r and not game.generating:
@@ -222,22 +219,23 @@ def main():
                     world.gen_index = 0
                     world.reset_to(world.gen_index)
 
-                if event.key == pygame.K_w and not game.generating:
+                if event.key == pygame.K_UP and not game.generating:
                     world.update_generation()
 
-                if event.key == pygame.K_s and not game.generating and world.gen_index > 0:
+                if event.key == pygame.K_DOWN and not game.generating and world.gen_index > 0:
 
                     world.gen_index -= 1
                     world.reset_to(world.gen_index)
-                    print(f"Gen Index = {world.gen_index}")
+
+                if event.key == pygame.K_g:
+
+                    if not game.show_grid: game.show_grid = True
+                    elif game.show_grid: game.show_grid = False
 
         screen.fill('White')
 
-        world.update()
         if game.generating: game.update_generation(dt)
-        world.draw(screen)
-
-        if SHOW_GRID: game.draw_grid()
+        if game.show_grid: game.draw_grid()
 
         pygame.display.set_caption(f'Life Viewer | FPS: {round(clock.get_fps(), 2)}')
         pygame.display.update()
