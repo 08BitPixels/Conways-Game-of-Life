@@ -22,12 +22,33 @@ class Game:
         self.generation_speed = 3
         self.generation_buffer = 0
         self.show_grid = True
-        
+
+        self.text = Text()
         self.world = World(dimensions = world_dimensions, ruleset = ruleset)
 
         print(f'Life Viewer initialised {round(time() - start_time, 3)}s.')
         print(f'Gen Index = {self.world.gen_index}')
 
+    def update(self) -> None:
+
+        self.input()
+        if self.generating: self.update_generation(dt)
+        if self.show_grid: self.draw_grid()
+    
+    def input(self) -> None:
+
+        keys_pressed = pygame.key.get_pressed()
+            
+        if keys_pressed[pygame.K_SPACE]:
+
+            if not self.generating: self.generating = True
+            elif self.generating: self.generating = False
+
+        if keys_pressed[pygame.K_g]:
+
+            if not self.show_grid: self.show_grid = True
+            elif self.show_grid: self.show_grid = False
+    
     def draw_grid(self) -> None:
 
         for line in range(COLS + 1): pygame.draw.line(screen, GRID_COLOUR, (SQ_SIZE_X * line, 0), (SQ_SIZE_Y * line, HEIGHT), GRID_WIDTH)
@@ -41,7 +62,17 @@ class Game:
             self.generation_buffer = self.generation_speed
 
         self.generation_buffer -= round(100 * dt)
-        
+
+class Text:
+
+    def __init__(self) -> None:
+
+        self.texts = []
+
+    def update(self) -> None:
+
+        self.texts = []
+
 class World:
 
     def __init__(self, dimensions: tuple, ruleset: str) -> None:
@@ -63,6 +94,32 @@ class World:
         self.reset_grid()
         self.save_grid()
 
+    def input(self, generating: bool) -> None:
+
+        mouse_pressed = pygame.mouse.get_pressed()
+        mouse_pos = pygame.mouse.get_pos()
+        keys_pressed = pygame.key.get_pressed()
+
+        if mouse_pressed[0]:
+
+            x = int(mouse_pos[0] // SQ_SIZE_X)
+            y = int(mouse_pos[1] // SQ_SIZE_Y)
+
+            if x <= COLS and y <= ROWS: self.toggle_cell((x, y))
+
+        if keys_pressed[pygame.K_r] and not generating:
+
+            self.gen_index = 0
+            self.reset_to(self.gen_index)
+
+        if keys_pressed[pygame.K_UP] and not generating:
+            self.update_generation()
+
+        if keys_pressed[pygame.K_DOWN] and not generating and self.gen_index > 0:
+
+            self.gen_index -= 1
+            self.reset_to(self.gen_index)
+    
     def draw(self, surface: pygame.Surface) -> None:
         self.cells.draw(surface)
 
@@ -190,6 +247,7 @@ class Cell(pygame.sprite.Sprite):
 def main():
 
     game = Game((COLS, ROWS), RULESET)
+    text = game.text
     world = game.world
 
     previous_time = time()
@@ -205,44 +263,18 @@ def main():
                 pygame.quit()
                 exit()
 
-            if event.type == pygame.MOUSEBUTTONDOWN:
-
-                x = int(event.pos[0] // SQ_SIZE_X)
-                y = int(event.pos[1] // SQ_SIZE_Y)
-
-                if x <= COLS and y <= ROWS: world.toggle_cell((x, y))
-
-            if event.type == pygame.KEYDOWN:
-            
-                if event.key == pygame.K_SPACE:
-
-                    if not game.generating: game.generating = True
-                    elif game.generating: game.generating = False
-
-                if event.key == pygame.K_r and not game.generating:
-
-                    world.gen_index = 0
-                    world.reset_to(world.gen_index)
-
-                if event.key == pygame.K_UP and not game.generating:
-                    world.update_generation()
-
-                if event.key == pygame.K_DOWN and not game.generating and world.gen_index > 0:
-
-                    world.gen_index -= 1
-                    world.reset_to(world.gen_index)
-
-                if event.key == pygame.K_g:
-
-                    if not game.show_grid: game.show_grid = True
-                    elif game.show_grid: game.show_grid = False
-
         screen.fill('White')
 
+        # World
         world.draw(screen)
-        if game.generating: game.update_generation(dt)
-        if game.show_grid: game.draw_grid()
+        world.input(game.generating)
 
+        # Game
+        game.update()
+
+        # Text
+        [screen.blit(text[0], text[1]) for text in text.texts]
+        
         pygame.display.set_caption(f'Life Viewer | FPS: {round(clock.get_fps(), 2)}')
         pygame.display.update()
         clock.tick(FPS)
