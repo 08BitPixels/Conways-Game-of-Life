@@ -29,7 +29,7 @@ class Game:
         print(f'Life Viewer initialised {round(time() - start_time, 3)}s.')
         print(f'Gen Index = {self.world.gen_index}')
 
-    def update(self) -> None:
+    def update(self, dt: float | int) -> None:
 
         self.input()
         if self.generating: self.update_generation(dt)
@@ -88,6 +88,7 @@ class World:
         self.gen_index = 0
         self.grid = ndarray((self.DIMENSIONS[0], self.DIMENSIONS[1]), pygame.sprite.Sprite)
         self.prev_grids = []
+        self.mouse_held = False
                 
         self.cells = pygame.sprite.Group()
 
@@ -100,12 +101,16 @@ class World:
         mouse_pos = pygame.mouse.get_pos()
         keys_pressed = pygame.key.get_pressed()
 
-        if mouse_pressed[0]:
+        if mouse_pressed[0] and not self.mouse_held:
 
+            self.mouse_held = True
             x = int(mouse_pos[0] // SQ_SIZE_X)
             y = int(mouse_pos[1] // SQ_SIZE_Y)
 
             if x <= COLS and y <= ROWS: self.toggle_cell((x, y))
+
+        elif not mouse_pressed[0]:
+            self.mouse_held = False
 
         if keys_pressed[pygame.K_r] and not generating:
 
@@ -270,7 +275,7 @@ def main():
         world.input(game.generating)
 
         # Game
-        game.update()
+        game.update(dt)
 
         # Text
         [screen.blit(text[0], text[1]) for text in text.texts]
